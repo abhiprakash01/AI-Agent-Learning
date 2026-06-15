@@ -5,14 +5,14 @@ from langchain_community.embeddings import HuggingFaceEmbeddings
 from langchain_ollama import ChatOllama
 
 # -------------------------
-# Load Resume PDF
+# Load Resume
 # -------------------------
 
 loader = PyPDFLoader("resume.pdf")
 documents = loader.load()
 
 # -------------------------
-# Split into Chunks
+# Split Resume
 # -------------------------
 
 splitter = RecursiveCharacterTextSplitter(
@@ -23,7 +23,7 @@ splitter = RecursiveCharacterTextSplitter(
 chunks = splitter.split_documents(documents)
 
 # -------------------------
-# Create Embeddings
+# Embeddings
 # -------------------------
 
 embedding_model = HuggingFaceEmbeddings(
@@ -31,7 +31,7 @@ embedding_model = HuggingFaceEmbeddings(
 )
 
 # -------------------------
-# Create Vector Database
+# Vector Database
 # -------------------------
 
 vector_db = Chroma.from_documents(
@@ -39,8 +39,10 @@ vector_db = Chroma.from_documents(
     embedding=embedding_model
 )
 
+print("Vector Database Created Successfully!")
+
 # -------------------------
-# Load Local LLM
+# LLM
 # -------------------------
 
 llm = ChatOllama(
@@ -51,7 +53,7 @@ print("\nCareer Assistant Ready!")
 print("Type 'exit' to quit.\n")
 
 # -------------------------
-# Chat Loop
+# Main Loop
 # -------------------------
 
 while True:
@@ -80,14 +82,16 @@ while True:
         prompt = f"""
 You are an expert career coach.
 
-Analyze the following resume and provide:
-
-1. Top 3 strengths
-2. Top 3 areas for improvement
-3. Top 3 skills to learn next
+Analyze the resume below.
 
 Resume:
 {context}
+
+Provide:
+
+1. Top 3 Strengths
+2. Top 3 Areas for Improvement
+3. Top 3 Skills to Learn Next
 """
 
     # -------------------------
@@ -97,8 +101,7 @@ Resume:
     elif "interview" in user_input.lower():
 
         prompt = f"""
-Based on the following resume,
-generate 10 technical interview questions.
+Based on the resume below, generate 10 technical interview questions.
 
 Resume:
 {context}
@@ -122,7 +125,49 @@ Resume:
 """
 
     # -------------------------
-    # General Resume Questions
+    # JD Matcher
+    # -------------------------
+
+    elif "match" in user_input.lower():
+
+        print("\nPaste Job Description")
+        print("Type END on a new line when finished:\n")
+
+        lines = []
+
+        while True:
+
+            line = input()
+
+            if line.upper() == "END":
+                break
+
+            lines.append(line)
+
+        job_description = "\n".join(lines)
+
+        prompt = f"""
+You are an expert technical recruiter.
+
+Resume Information:
+{context}
+
+Job Description:
+{job_description}
+
+Provide:
+
+1. Match Score (0-100)
+2. Strong Matching Skills
+3. Missing Skills
+4. Improvement Suggestions
+5. Hiring Recommendation
+
+Keep the answer concise and professional.
+"""
+
+    # -------------------------
+    # General Resume Q&A
     # -------------------------
 
     else:
@@ -130,8 +175,8 @@ Resume:
         prompt = f"""
 Answer ONLY using the resume information below.
 
-If the answer is not present,
-say:
+If the answer is not available in the resume,
+respond with:
 
 I could not find that information in the resume.
 
@@ -148,4 +193,4 @@ Answer:
 
     response = llm.invoke(prompt)
 
-    print(f"AI: {response.content}\n")
+    print(f"AI:\n{response.content}\n")
