@@ -1,3 +1,5 @@
+import os
+
 from langchain_community.document_loaders import PyPDFLoader
 from langchain_text_splitters import RecursiveCharacterTextSplitter
 from langchain_community.vectorstores import Chroma
@@ -5,25 +7,7 @@ from langchain_community.embeddings import HuggingFaceEmbeddings
 from langchain_ollama import ChatOllama
 
 # -------------------------
-# Load Resume
-# -------------------------
-
-loader = PyPDFLoader("resume.pdf")
-documents = loader.load()
-
-# -------------------------
-# Split Resume
-# -------------------------
-
-splitter = RecursiveCharacterTextSplitter(
-    chunk_size=500,
-    chunk_overlap=100
-)
-
-chunks = splitter.split_documents(documents)
-
-# -------------------------
-# Embeddings
+# Embedding Model
 # -------------------------
 
 embedding_model = HuggingFaceEmbeddings(
@@ -31,25 +15,51 @@ embedding_model = HuggingFaceEmbeddings(
 )
 
 # -------------------------
-# Vector Database
+# Create or Load ChromaDB
 # -------------------------
 
-vector_db = Chroma.from_documents(
-    documents=chunks,
-    embedding=embedding_model
-)
+if not os.path.exists("./chroma_db"):
 
-print("Vector Database Created Successfully!")
+    print("Creating Vector Database for first time...")
+
+    loader = PyPDFLoader("resume.pdf")
+    documents = loader.load()
+
+    splitter = RecursiveCharacterTextSplitter(
+        chunk_size=500,
+        chunk_overlap=100
+    )
+
+    chunks = splitter.split_documents(documents)
+
+    vector_db = Chroma.from_documents(
+        documents=chunks,
+        embedding=embedding_model,
+        persist_directory="./chroma_db"
+    )
+
+    print("Vector Database Created Successfully!")
+
+else:
+
+    print("Loading Existing Vector Database...")
+
+    vector_db = Chroma(
+        persist_directory="./chroma_db",
+        embedding_function=embedding_model
+    )
+
+    print("Vector Database Loaded Successfully!")
 
 # -------------------------
-# LLM
+# Load LLM
 # -------------------------
 
 llm = ChatOllama(
     model="qwen3:4b"
 )
 
-print("\nCareer Assistant Ready!")
+print("\nCareer Assistant v4 Ready!")
 print("Type 'exit' to quit.\n")
 
 # -------------------------
@@ -92,6 +102,38 @@ Provide:
 1. Top 3 Strengths
 2. Top 3 Areas for Improvement
 3. Top 3 Skills to Learn Next
+"""
+
+    # -------------------------
+    # Resume Score
+    # -------------------------
+
+    elif "score" in user_input.lower():
+
+        prompt = f"""
+You are an expert resume reviewer.
+
+Review the resume below.
+
+Resume:
+{context}
+
+Provide:
+
+1. Overall Resume Score out of 10
+
+2. Scores for:
+- Technical Skills
+- Experience
+- Projects
+- Certifications
+- Resume Structure
+
+3. Top Strengths
+
+4. Areas for Improvement
+
+5. Recommendations
 """
 
     # -------------------------
@@ -175,8 +217,7 @@ Keep the answer concise and professional.
         prompt = f"""
 Answer ONLY using the resume information below.
 
-If the answer is not available in the resume,
-respond with:
+If the answer is not available in the resume, respond with:
 
 I could not find that information in the resume.
 
